@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Docker QEMU Buildx ECR
-        uses: bbharathkumarreddy/ec2-docker-service-deploy-action@v0.1
+        uses: bbharathkumarreddy/ec2-docker-service-deploy-action@v1.0
         with:
           ssh-host: ${{ vars.ssh-host }}
           ssh-key: ${{ secrets.ssh-key }}
@@ -27,8 +27,8 @@ jobs:
           docker-service: my-service
           replicas: 2
           docker-network: my-network
-          docker-published-port: 8000
-          docker-target-port: 8000
+          docker-published-port: 80
+          docker-target-port: 80
 ```
 
 ## Customizing
