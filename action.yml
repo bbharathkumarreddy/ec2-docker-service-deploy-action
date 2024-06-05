@@ -1,0 +1,142 @@
+name: "EC2 Docker service deploy action"
+description: "EC2 Docker service deploy and optional in-action security group ip whitelisting"
+author: "bbharathkumarreddy@96@gmail.com"
+branding:
+  icon: "package"
+  color: "blue"
+
+inputs:
+  ssh-host:
+    description: "SSH hostname or ip address."
+    required: true
+  ssh-key:
+    description: "SSH key to connect to host machine."
+    required: false
+  ssh-port:
+    description: "SSH port to deploy the service."
+    default: 22
+    required: false
+  ssh-username:
+    description: "SSH username."
+    default: "ec2-user"
+    required: false
+  aws-access-key-id:
+    description: "AWS access key id."
+    required: false
+  aws-secret-access-key:
+    description: "AWS Secret access key."
+    required: false
+  aws-region:
+    description: "AWS region to deploy."
+    default: "us-east-1"
+    required: false
+  security-group-id:
+    description: "AWS security group id to whitelist github action's ip address temporarily."
+    required: false
+  ecr-image-uri:
+    description: "ECR Container image URI with tag."
+    required: true
+  docker-service:
+    description: "Docker service name."
+    default: "my-service"
+    required: false
+  replicas:
+    description: "Number of service replicas."
+    default: 1
+    required: false
+  docker-network:
+    description: "Docker network."
+    default: "ingress"
+    required: false
+  docker-published-port:
+    description: "Docker port to publish."
+    default: 80
+    required: false
+  docker-target-port:
+    description: "Docker target port of container."
+    default: 80
+    required: false
+  docker-opts:
+    description: "More docker options to create docker service. eg. --log-driver=awslogs --log-opt awslogs-group=my-logs --log-opt awslogs-region=us-east-1"
+    required: false
+  prune:
+    description: "On prune true, Will cleanup exitied containers and unused images."
+    default: true
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get Github action IP
+      id: "ip"
+      if: ${{ inputs.security-group-id != '' }}
+      uses: haythem/public-ip@v1.2
+
+    - name: Configure AWS credentials
+      if: ${{ inputs.security-group-id != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Add Github Actions IP to Security group
+      shell: bash
+      if: ${{ inputs.security-group-id != '' }}
+      run: |
+        aws ec2 authorize-security-group-ingress --group-id ${{ inputs.security-group-id }} --protocol tcp --port ${{ inputs.ssh-port }} --cidr ${{ steps.ip.outputs.ipv4 }}/32
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: EC2 Docker Service Deploy
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ inputs.ssh-host }}
+        username: ${{ inputs.ssh-username }}
+        key: ${{ inputs.ssh-key }}
+        script: |
+          sudo docker login --username AWS -p $(aws ecr get-login-password --region ${{ inputs.aws-region }}) ${{ steps.login-ecr.outputs.registry }}
+          sudo docker pull ${{ inputs.ecr-image-uri }}
+          if sudo -S docker service inspect ${{ inputs.docker-service }} &> /dev/null; then
+            echo "Updating existing service."
+            sudo -S docker service update \
+              --force \
+              --replicas ${{ inputs.replicas }} \
+              ${{ inputs.docker-service }}
+          else
+            echo "Creating new service."
+            sudo -S docker service create \
+              --name ${{ inputs.docker-service }} \
+              --replicas ${{ inputs.replicas }} \
+              --network ${{ inputs.docker-network }} \
+              --publish published=${{ inputs.published-port }},target=${{ inputs.docker-target-port }} \
+              ${{ inputs.docker-opts }} \
+              ${{ inputs.ecr-image-uri }}
+          fi
+
+    - name: EC2 Prune conatiner and images
+      if: ${{ inputs.prune == 'true' }}
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ inputs.ssh-host }}
+        username: ${{ inputs.ssh-username }}
+        key: ${{ inputs.ssh-key }}
+        script: |
+          sudo -S docker container prune -f
+          sudo -S docker image prune -af
+
+    - name: Remove Github Actions IP from security group
+      shell: bash
+      if: ${{ inputs.security-group-id != '' }} && always()
+      run: |
+        aws ec2 revoke-security-group-ingress --group-id ${{ inputs.security-group-id }} --protocol tcp --port ${{ inputs.ssh-port }} --cidr ${{ steps.ip.outputs.ipv4 }}/32
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
