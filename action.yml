@@ -115,7 +115,7 @@ runs:
               --name ${{ inputs.docker-service }} \
               --replicas ${{ inputs.replicas }} \
               --network ${{ inputs.docker-network }} \
-              --publish published=${{ inputs.published-port }},target=${{ inputs.docker-target-port }} \
+              --publish published=${{ inputs.docker-published-port }},target=${{ inputs.docker-target-port }} \
               ${{ inputs.docker-opts }} \
               ${{ inputs.ecr-image-uri }}
           fi
