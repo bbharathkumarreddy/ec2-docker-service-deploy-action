@@ -63,6 +63,10 @@ inputs:
     description: "On prune true, Will cleanup exitied containers and unused images."
     default: true
     required: false
+  restart-only:
+    description: "On restart-only true, Service will be force restarted with set replicas."
+    default: false
+    required: false
 
 runs:
   using: "composite"
@@ -95,6 +99,7 @@ runs:
       uses: aws-actions/amazon-ecr-login@v2
 
     - name: EC2 Docker Service Deploy
+      if: ${{ inputs.restart-only != 'true' }}
       uses: appleboy/ssh-action@master
       with:
         host: ${{ inputs.ssh-host }}
@@ -119,6 +124,21 @@ runs:
               ${{ inputs.docker-opts }} \
               ${{ inputs.ecr-image-uri }}
           fi
+
+    - name: EC2 Docker Restart Service
+      if: ${{ inputs.restart-only == 'true' }}
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ inputs.ssh-host }}
+        username: ${{ inputs.ssh-username }}
+        key: ${{ inputs.ssh-key }}
+        script: |
+          sudo docker login --username AWS -p $(aws ecr get-login-password --region ${{ inputs.aws-region }}) ${{ steps.login-ecr.outputs.registry }}
+          sudo docker pull ${{ inputs.ecr-image-uri }}
+          sudo -S docker service update \
+              --force \
+              --replicas ${{ inputs.replicas }} \
+              ${{ inputs.docker-service }}
 
     - name: EC2 Prune conatiner and images
       if: ${{ inputs.prune == 'true' }}
