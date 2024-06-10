@@ -67,6 +67,10 @@ inputs:
     description: "On restart-only true, Service will be force restarted with set replicas."
     default: false
     required: false
+  debug:
+    description: "Enable debug mode."
+    default: false
+    required: false
 
 runs:
   using: "composite"
@@ -100,11 +104,13 @@ runs:
 
     - name: EC2 Docker Service Deploy
       if: ${{ inputs.restart-only != 'true' }}
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-username }}
         key: ${{ inputs.ssh-key }}
+        debug: : ${{ inputs.debug }}
+        script_stop: true
         script: |
           sudo docker login --username AWS -p $(aws ecr get-login-password --region ${{ inputs.aws-region }}) ${{ steps.login-ecr.outputs.registry }}
           sudo docker pull ${{ inputs.ecr-image-uri }}
@@ -127,11 +133,13 @@ runs:
 
     - name: EC2 Docker Restart Service
       if: ${{ inputs.restart-only == 'true' }}
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-username }}
         key: ${{ inputs.ssh-key }}
+        debug: : ${{ inputs.debug }}
+        script_stop: true
         script: |
           sudo docker login --username AWS -p $(aws ecr get-login-password --region ${{ inputs.aws-region }}) ${{ steps.login-ecr.outputs.registry }}
           sudo docker pull ${{ inputs.ecr-image-uri }}
@@ -142,11 +150,13 @@ runs:
 
     - name: EC2 Prune conatiner and images
       if: ${{ inputs.prune == 'true' }}
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-username }}
         key: ${{ inputs.ssh-key }}
+        debug: : ${{ inputs.debug }}
+        script_stop: true
         script: |
           sudo -S docker container prune -f
           sudo -S docker image prune -af

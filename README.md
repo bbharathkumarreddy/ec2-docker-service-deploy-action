@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Docker QEMU Buildx ECR
-        uses: bbharathkumarreddy/ec2-docker-service-deploy-action@v1.0
+        uses: bbharathkumarreddy/ec2-docker-service-deploy-action@v2.0
         with:
           ssh-host: ${{ vars.ssh-host }}
           ssh-key: ${{ secrets.ssh-key }}
@@ -55,7 +55,8 @@ The following inputs can be used as `step.with` keys:
 | `docker-target-port`    | String  | `80`         | Docker target port of container.                                                                                                             |
 | `docker-opts`           | String  |              | More docker options to create docker service. eg. `--log-driver=awslogs --log-opt awslogs-group=my-logs --log-opt awslogs-region=us-east-1`. |
 | `prune`                 | Boolean | `true`       | On prune true, Will cleanup exitied containers and unused images.                                                                            |
-| `restart-only`          | Boolean | `false`      | On restart-only true, Service will be force restarted with set replicas.                                                                       |
+| `restart-only`          | Boolean | `false`      | On restart-only true, Service will be force restarted with set replicas.                                                                     |
+| `debug`                 | Boolean | `false`      | Enable debug mode.                                                                                                                           |
 
 ## Contributing
 
