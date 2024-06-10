@@ -109,7 +109,7 @@ runs:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-username }}
         key: ${{ inputs.ssh-key }}
-        debug: : ${{ inputs.debug }}
+        debug: ${{ inputs.debug }}
         script_stop: true
         script: |
           sudo docker login --username AWS -p $(aws ecr get-login-password --region ${{ inputs.aws-region }}) ${{ steps.login-ecr.outputs.registry }}
@@ -138,7 +138,7 @@ runs:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-username }}
         key: ${{ inputs.ssh-key }}
-        debug: : ${{ inputs.debug }}
+        debug: ${{ inputs.debug }}
         script_stop: true
         script: |
           sudo docker login --username AWS -p $(aws ecr get-login-password --region ${{ inputs.aws-region }}) ${{ steps.login-ecr.outputs.registry }}
@@ -155,7 +155,7 @@ runs:
         host: ${{ inputs.ssh-host }}
         username: ${{ inputs.ssh-username }}
         key: ${{ inputs.ssh-key }}
-        debug: : ${{ inputs.debug }}
+        debug: ${{ inputs.debug }}
         script_stop: true
         script: |
           sudo -S docker container prune -f
